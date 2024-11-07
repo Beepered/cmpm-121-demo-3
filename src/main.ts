@@ -1,1 +1,101 @@
-// todo
+// @deno-types="npm:@types/leaflet@^1.9.14"
+import leaflet from "leaflet";
+import "./leafletWorkaround.ts";
+
+import "leaflet/dist/leaflet.css";
+import "./style.css";
+
+const app: HTMLDivElement = document.querySelector("#app")!;
+
+const MAIN_LOCATION = leaflet.latLng(36.98949379578401, -122.06277128548504);
+
+const ZOOM_LEVEL = 19;
+
+const map = leaflet.map(document.getElementById("map")!, {
+  center: MAIN_LOCATION,
+  zoom: ZOOM_LEVEL,
+  minZoom: ZOOM_LEVEL,
+  maxZoom: ZOOM_LEVEL,
+  zoomControl: false,
+  scrollWheelZoom: false,
+});
+
+// background image
+leaflet
+  .tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution:
+      '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  })
+  .addTo(map);
+
+const playerMarker = leaflet.marker(MAIN_LOCATION);
+playerMarker.addTo(map);
+
+let playerCoins = 0;
+const coinText = document.createElement("h1");
+coinText.innerHTML = `coins: ${playerCoins}`;
+coinText.style.textAlign = "center";
+app.append(coinText);
+
+interface Cell {
+  i: number;
+  j: number;
+  coins: number;
+}
+
+interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+interface GeoRect {
+  topLeft: LatLng;
+  bottomRight: LatLng;
+}
+
+function getRectForCell(cell: Cell): GeoRect {
+  const TILE_DEGREES = 1e-4;
+  return {
+    topLeft: {
+      lat: MAIN_LOCATION.lat + cell.i * TILE_DEGREES,
+      lng: MAIN_LOCATION.lng + cell.j * TILE_DEGREES,
+    },
+    bottomRight: {
+      lat: MAIN_LOCATION.lat + (cell.i + 1) * TILE_DEGREES,
+      lng: MAIN_LOCATION.lng + (cell.j + 1) * TILE_DEGREES,
+    },
+  };
+}
+
+function createCell(cell: Cell) {
+  const bounds = getRectForCell(cell);
+  const rect = leaflet.rectangle([[bounds.topLeft.lat, bounds.topLeft.lng], [
+    bounds.bottomRight.lat,
+    bounds.bottomRight.lng,
+  ]]);
+  rect.addTo(map);
+  rect.bindPopup(() => {
+    const popup = document.createElement("div");
+    popup.innerHTML = `
+                <div>"${cell.i},${cell.j}". It has <span id="value">${cell.coins}</span> coins.</div>
+                <button id="take">take</button>`;
+    popup
+      .querySelector<HTMLButtonElement>("#take")!
+      .addEventListener("click", () => {
+        collect(cell);
+        popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell.coins
+          .toString();
+      });
+    return popup;
+  });
+}
+createCell({ i: 0, j: 3, coins: 3 });
+
+function collect(cell: Cell) {
+  if (cell.coins > 0) {
+    cell.coins--;
+    playerCoins++;
+    coinText.innerHTML = `coins: ${playerCoins}`;
+  }
+}
