@@ -79,11 +79,18 @@ function createCell(cell: Cell) {
     const popup = document.createElement("div");
     popup.innerHTML = `
                 <div>"${cell.i},${cell.j}". It has <span id="value">${cell.coins}</span> coins.</div>
-                <button id="take">take</button>`;
+                <button id="take">take</button><button id="give">give</button>`;
     popup
       .querySelector<HTMLButtonElement>("#take")!
       .addEventListener("click", () => {
         collect(cell);
+        popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell.coins
+          .toString();
+      });
+    popup
+      .querySelector<HTMLButtonElement>("#give")!
+      .addEventListener("click", () => {
+        deposit(cell);
         popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell.coins
           .toString();
       });
@@ -96,6 +103,13 @@ function collect(cell: Cell) {
   if (cell.coins > 0) {
     cell.coins--;
     playerCoins++;
+    coinText.innerHTML = `coins: ${playerCoins}`;
+  }
+}
+function deposit(cell: Cell) {
+  if (playerCoins > 0) {
+    playerCoins--;
+    cell.coins++;
     coinText.innerHTML = `coins: ${playerCoins}`;
   }
 }
