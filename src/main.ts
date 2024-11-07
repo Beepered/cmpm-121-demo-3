@@ -5,6 +5,8 @@ import "./leafletWorkaround.ts";
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 
+import luck from "./luck.ts";
+
 const app: HTMLDivElement = document.querySelector("#app")!;
 
 const MAIN_LOCATION = leaflet.latLng(36.98949379578401, -122.06277128548504);
@@ -74,6 +76,7 @@ function createCell(cell: Cell) {
     bounds.bottomRight.lat,
     bounds.bottomRight.lng,
   ]]);
+
   rect.addTo(map);
   rect.bindPopup(() => {
     const popup = document.createElement("div");
@@ -97,7 +100,6 @@ function createCell(cell: Cell) {
     return popup;
   });
 }
-createCell({ i: 0, j: 3, coins: 3 });
 
 function collect(cell: Cell) {
   if (cell.coins > 0) {
@@ -111,5 +113,20 @@ function deposit(cell: Cell) {
     playerCoins--;
     cell.coins++;
     coinText.innerHTML = `coins: ${playerCoins}`;
+  }
+}
+
+const NEIGHBORHOOD_SIZE = 8;
+const CACHE_SPAWN_PROBABILITY = 0.1;
+for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
+  for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
+    // If location i,j is lucky enough, spawn a cache!
+    if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
+      createCell({
+        i: i,
+        j: j,
+        coins: Math.floor(luck([i, j, "initialValue"].toString()) * 100),
+      });
+    }
   }
 }
