@@ -34,16 +34,26 @@ leaflet
 const playerMarker = leaflet.marker(MAIN_LOCATION);
 playerMarker.addTo(map);
 
-let playerCoins = 0;
+interface Coin {
+  i: number;
+  j: number;
+  serial: number;
+}
+
+const playerCoins: Coin[] = [];
 const coinText = document.createElement("h1");
-coinText.innerHTML = `coins: ${playerCoins}`;
+coinText.innerHTML = `inventory:\n`;
 coinText.style.textAlign = "center";
 app.append(coinText);
+
+const inventoryText = document.createElement("p");
+inventoryText.style.textAlign = "center";
+app.append(inventoryText);
 
 interface Cell {
   i: number;
   j: number;
-  coins: number;
+  inventory: Coin[];
 }
 
 interface LatLng {
@@ -56,65 +66,112 @@ interface GeoRect {
   bottomRight: LatLng;
 }
 
-function getRectForCell(cell: Cell): GeoRect {
-  const TILE_DEGREES = 1e-4;
+const TILE_DEGREES = 1e-4;
+function getRectForCell(i: number, j: number): GeoRect {
   return {
     topLeft: {
-      lat: MAIN_LOCATION.lat + cell.i * TILE_DEGREES,
-      lng: MAIN_LOCATION.lng + cell.j * TILE_DEGREES,
+      lat: MAIN_LOCATION.lat + i * TILE_DEGREES,
+      lng: MAIN_LOCATION.lng + j * TILE_DEGREES,
     },
     bottomRight: {
-      lat: MAIN_LOCATION.lat + (cell.i + 1) * TILE_DEGREES,
-      lng: MAIN_LOCATION.lng + (cell.j + 1) * TILE_DEGREES,
+      lat: MAIN_LOCATION.lat + (i + 1) * TILE_DEGREES,
+      lng: MAIN_LOCATION.lng + (j + 1) * TILE_DEGREES,
     },
   };
 }
 
-function createCell(cell: Cell) {
-  const bounds = getRectForCell(cell);
-  const rect = leaflet.rectangle([[bounds.topLeft.lat, bounds.topLeft.lng], [
-    bounds.bottomRight.lat,
-    bounds.bottomRight.lng,
-  ]]);
+function createCell(i: number, j: number) {
+  const bounds = getRectForCell(i, j);
+  const rect = leaflet.rectangle([
+    [bounds.topLeft.lat, bounds.topLeft.lng],
+    [bounds.bottomRight.lat, bounds.bottomRight.lng],
+  ]);
+
+  const inventory: Coin[] = [];
+  for (
+    let i = 0;
+    i < Math.floor(luck([i, j, "initialValue"].toString()) * 10);
+    i++
+  ) {
+    inventory.push({
+      i: Math.round(bounds.topLeft.lat / TILE_DEGREES),
+      j: Math.round(bounds.topLeft.lng / TILE_DEGREES),
+      serial: i,
+    });
+  }
+  const cell = { i: i, j: j, inventory: inventory };
 
   rect.addTo(map);
   rect.bindPopup(() => {
     const popup = document.createElement("div");
-    popup.innerHTML = `
-                <div>"${cell.i},${cell.j}". It has <span id="value">${cell.coins}</span> coins.</div>
-                <button id="take">take</button><button id="give">give</button>`;
-    popup
-      .querySelector<HTMLButtonElement>("#take")!
-      .addEventListener("click", () => {
-        collect(cell);
-        popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell
-          .coins
-          .toString();
-      });
-    popup
-      .querySelector<HTMLButtonElement>("#give")!
-      .addEventListener("click", () => {
-        deposit(cell);
-        popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell
-          .coins
-          .toString();
-      });
+    popup.innerHTML = `${Math.round(bounds.topLeft.lat / TILE_DEGREES)}, ${
+      Math.round(bounds.topLeft.lng / TILE_DEGREES)
+    }<br>`;
+    if (cell.inventory.length > 0) {
+      popup.innerHTML += `<div>TAKE</div>`;
+      displayCellCoins(cell, popup);
+    }
+    if (playerCoins.length > 0) {
+      popup.innerHTML += `<div>GIVE</div>`;
+      displayPlayerCoins(cell, popup);
+    }
     return popup;
   });
 }
 
-function collect(cell: Cell) {
-  if (cell.coins > 0) {
-    cell.coins--;
-    playerCoins++;
-    coinText.innerHTML = `coins: ${playerCoins}`;
+function collect(cell: Cell, coin: Coin) { // takes coin and gives to player
+  if (cell.inventory.length > 0) {
+    playerCoins.push(coin);
+    updateInventoryText();
   }
 }
-function deposit(cell: Cell) {
-  if (playerCoins > 0) {
-    playerCoins--;
-    cell.coins++;
-    coinText.innerHTML = `coins: ${playerCoins}`;
+function deposit(cell: Cell, coin: Coin) { // takes coin and gives to cell
+  if (playerCoins.length > 0) {
+    cell.inventory.push(coin);
+    updateInventoryText();
+  }
+}
+
+function displayCellCoins(cell: Cell, popup: HTMLDivElement) {
+  for (let x = 0; x < cell.inventory.length; x++) {
+    const buttonDiv = document.createElement("div");
+    const button = document.createElement("button");
+    button.innerHTML = `take`;
+    buttonDiv.append(button);
+    button.addEventListener("click", () => {
+      collect(cell, cell.inventory[x]);
+    });
+    buttonDiv.append(
+      `${cell.inventory[x].i}:${cell.inventory[x].j}#${
+        cell.inventory[x].serial
+      }`,
+    );
+    popup.append(buttonDiv);
+  }
+}
+
+function displayPlayerCoins(cell: Cell, popup: HTMLDivElement) {
+  for (let x = 0; x < playerCoins.length; x++) {
+    const buttonDiv = document.createElement("div");
+    const button = document.createElement("button");
+    button.innerHTML = `give`;
+    buttonDiv.append(button);
+    button.addEventListener("click", () => {
+      deposit(cell, playerCoins[x]);
+    });
+    buttonDiv.append(
+      `${playerCoins[x].i}:${playerCoins[x].j}#${playerCoins[x].serial}`,
+    );
+    popup.append(buttonDiv);
+  }
+}
+
+function updateInventoryText() {
+  inventoryText.innerHTML = ``;
+  for (let x = 0; x < playerCoins.length; x++) {
+    inventoryText.innerHTML += `${playerCoins[x].i}:${playerCoins[x].j}#${
+      playerCoins[x].serial
+    }<br>`;
   }
 }
 
@@ -124,13 +181,7 @@ for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
   for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
     // If location i,j is lucky enough, spawn a cache!
     if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
-      createCell({
-        i: i,
-        j: j,
-        coins: Math.floor(
-          luck([i, j, "initialValue"].toString()) * 100,
-        ),
-      });
+      createCell(i, j);
     }
   }
 }
