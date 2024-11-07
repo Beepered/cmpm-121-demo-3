@@ -107,14 +107,16 @@ function createCell(i: number, j: number) {
     popup.innerHTML = `${Math.round(bounds.topLeft.lat / TILE_DEGREES)}, ${
       Math.round(bounds.topLeft.lng / TILE_DEGREES)
     }<br>`;
+    const info = document.createElement("div");
     if (cell.inventory.length > 0) {
-      popup.innerHTML += `<div>TAKE</div>`;
-      displayCellCoins(cell, popup);
+      info.innerHTML += `<div>TAKE</div>`;
+      displayCellCoins(cell, info);
     }
     if (playerCoins.length > 0) {
-      popup.innerHTML += `<div>GIVE</div>`;
-      displayPlayerCoins(cell, popup);
+      info.innerHTML += `<div>GIVE</div>`;
+      displayPlayerCoins(cell, info);
     }
+    popup.append(info);
     return popup;
   });
 }
@@ -132,7 +134,7 @@ function deposit(cell: Cell, coin: Coin) { // takes coin and gives to cell
   }
 }
 
-function displayCellCoins(cell: Cell, popup: HTMLDivElement) {
+function displayCellCoins(cell: Cell, info: HTMLDivElement) {
   for (let x = 0; x < cell.inventory.length; x++) {
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
@@ -140,17 +142,18 @@ function displayCellCoins(cell: Cell, popup: HTMLDivElement) {
     buttonDiv.append(button);
     button.addEventListener("click", () => {
       collect(cell, cell.inventory[x]);
+      updatePopupText(cell, info);
     });
     buttonDiv.append(
       `${cell.inventory[x].i}:${cell.inventory[x].j}#${
         cell.inventory[x].serial
       }`,
     );
-    popup.append(buttonDiv);
+    info.append(buttonDiv);
   }
 }
 
-function displayPlayerCoins(cell: Cell, popup: HTMLDivElement) {
+function displayPlayerCoins(cell: Cell, info: HTMLDivElement) {
   for (let x = 0; x < playerCoins.length; x++) {
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
@@ -158,11 +161,12 @@ function displayPlayerCoins(cell: Cell, popup: HTMLDivElement) {
     buttonDiv.append(button);
     button.addEventListener("click", () => {
       deposit(cell, playerCoins[x]);
+      updatePopupText(cell, info);
     });
     buttonDiv.append(
       `${playerCoins[x].i}:${playerCoins[x].j}#${playerCoins[x].serial}`,
     );
-    popup.append(buttonDiv);
+    info.append(buttonDiv);
   }
 }
 
@@ -172,6 +176,17 @@ function updateInventoryText() {
     inventoryText.innerHTML += `${playerCoins[x].i}:${playerCoins[x].j}#${
       playerCoins[x].serial
     }<br>`;
+  }
+}
+
+function updatePopupText(cell: Cell, info: HTMLDivElement) {
+  if (cell.inventory.length > 0) {
+    info.innerHTML += `<div>TAKE</div>`;
+    displayCellCoins(cell, info);
+  }
+  if (playerCoins.length > 0) {
+    info.innerHTML += `<div>GIVE</div>`;
+    displayPlayerCoins(cell, info);
   }
 }
 
