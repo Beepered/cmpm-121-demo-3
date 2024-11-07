@@ -107,16 +107,18 @@ function createCell(i: number, j: number) {
     popup.innerHTML = `${Math.round(bounds.topLeft.lat / TILE_DEGREES)}, ${
       Math.round(bounds.topLeft.lng / TILE_DEGREES)
     }<br>`;
-    const info = document.createElement("div");
+    const takeDiv = document.createElement("div");
     if (cell.inventory.length > 0) {
-      info.innerHTML += `<div>TAKE</div>`;
-      displayCellCoins(cell, info);
+      takeDiv.innerHTML += `<div>TAKE</div>`;
+      displayTakeCoins(cell, takeDiv);
     }
+    popup.append(takeDiv);
+    const giveDiv = document.createElement("div");
     if (playerCoins.length > 0) {
-      info.innerHTML += `<div>GIVE</div>`;
-      displayPlayerCoins(cell, info);
+      giveDiv.innerHTML += `<div>GIVE</div>`;
+      displayGiveCoins(cell, giveDiv);
     }
-    popup.append(info);
+    popup.append(giveDiv);
     return popup;
   });
 }
@@ -124,17 +126,21 @@ function createCell(i: number, j: number) {
 function collect(cell: Cell, coin: Coin) { // takes coin and gives to player
   if (cell.inventory.length > 0) {
     playerCoins.push(coin);
+    const index = cell.inventory.indexOf(coin);
+    cell.inventory.splice(index, 1);
     updateInventoryText();
   }
 }
 function deposit(cell: Cell, coin: Coin) { // takes coin and gives to cell
   if (playerCoins.length > 0) {
     cell.inventory.push(coin);
+    const index = playerCoins.indexOf(coin);
+    playerCoins.splice(index, 1);
     updateInventoryText();
   }
 }
 
-function displayCellCoins(cell: Cell, info: HTMLDivElement) {
+function displayTakeCoins(cell: Cell, div: HTMLDivElement) {
   for (let x = 0; x < cell.inventory.length; x++) {
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
@@ -142,18 +148,18 @@ function displayCellCoins(cell: Cell, info: HTMLDivElement) {
     buttonDiv.append(button);
     button.addEventListener("click", () => {
       collect(cell, cell.inventory[x]);
-      updatePopupText(cell, info);
+      updateTakeCoinDiv(cell, div);
     });
     buttonDiv.append(
       `${cell.inventory[x].i}:${cell.inventory[x].j}#${
         cell.inventory[x].serial
       }`,
     );
-    info.append(buttonDiv);
+    div.append(buttonDiv);
   }
 }
 
-function displayPlayerCoins(cell: Cell, info: HTMLDivElement) {
+function displayGiveCoins(cell: Cell, div: HTMLDivElement) {
   for (let x = 0; x < playerCoins.length; x++) {
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
@@ -161,12 +167,12 @@ function displayPlayerCoins(cell: Cell, info: HTMLDivElement) {
     buttonDiv.append(button);
     button.addEventListener("click", () => {
       deposit(cell, playerCoins[x]);
-      updatePopupText(cell, info);
+      updateGiveCoinDiv(cell, div);
     });
     buttonDiv.append(
       `${playerCoins[x].i}:${playerCoins[x].j}#${playerCoins[x].serial}`,
     );
-    info.append(buttonDiv);
+    div.append(buttonDiv);
   }
 }
 
@@ -179,14 +185,19 @@ function updateInventoryText() {
   }
 }
 
-function updatePopupText(cell: Cell, info: HTMLDivElement) {
+function updateTakeCoinDiv(cell: Cell, div: HTMLDivElement) {
+  div.innerHTML = ``;
   if (cell.inventory.length > 0) {
-    info.innerHTML += `<div>TAKE</div>`;
-    displayCellCoins(cell, info);
+    div.innerHTML += `<div>TAKE</div>`;
+    displayTakeCoins(cell, div);
   }
+}
+
+function updateGiveCoinDiv(cell: Cell, div: HTMLDivElement) {
+  div.innerHTML = ``;
   if (playerCoins.length > 0) {
-    info.innerHTML += `<div>GIVE</div>`;
-    displayPlayerCoins(cell, info);
+    div.innerHTML += `<div>GIVE</div>`;
+    displayGiveCoins(cell, div);
   }
 }
 
