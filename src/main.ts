@@ -87,14 +87,16 @@ function createCell(cell: Cell) {
       .querySelector<HTMLButtonElement>("#take")!
       .addEventListener("click", () => {
         collect(cell);
-        popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell.coins
+        popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell
+          .coins
           .toString();
       });
     popup
       .querySelector<HTMLButtonElement>("#give")!
       .addEventListener("click", () => {
         deposit(cell);
-        popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell.coins
+        popup.querySelector<HTMLSpanElement>("#value")!.innerHTML = cell
+          .coins
           .toString();
       });
     return popup;
@@ -125,7 +127,9 @@ for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
       createCell({
         i: i,
         j: j,
-        coins: Math.floor(luck([i, j, "initialValue"].toString()) * 100),
+        coins: Math.floor(
+          luck([i, j, "initialValue"].toString()) * 100,
+        ),
       });
     }
   }
