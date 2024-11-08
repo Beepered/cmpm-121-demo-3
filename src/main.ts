@@ -30,19 +30,15 @@ const map = leaflet.map(document.getElementById("map")!, {
 // background image
 leaflet
   .tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
+    maxZoom: ZOOM_LEVEL,
     attribution:
       '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   })
   .addTo(map);
 
-let playerLocation = leaflet.latLng(MAIN_LOCATION);
-const playerMarker = leaflet.marker(MAIN_LOCATION);
-playerMarker.addTo(map);
-
 const playerCoins: Coin[] = [];
 const coinText = document.createElement("h1");
-coinText.innerHTML = `inventory:\n`;
+coinText.innerHTML = `inventory:`;
 coinText.style.textAlign = "center";
 app.append(coinText);
 
@@ -186,11 +182,16 @@ function updateGiveCoinDiv(cell: Cell, div: HTMLDivElement) {
 }
 
 const movementButtons = document.createElement("div");
+movementButtons.style.textAlign = "center";
 app.append(movementButtons);
 createMovementButton("⬆️", 1, 0);
 createMovementButton("⬇️", -1, 0);
 createMovementButton("⬅️", 0, -1);
 createMovementButton("➡️", 0, 1);
+
+let playerLocation = leaflet.latLng(MAIN_LOCATION);
+const playerMarker = leaflet.marker(MAIN_LOCATION);
+playerMarker.addTo(map);
 
 function createMovementButton(text: string, xChange: number, yChange: number) {
   const button = document.createElement("button");
@@ -201,6 +202,7 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
       playerLocation.lng + yChange * TILE_DEGREES,
     );
     playerMarker.setLatLng(playerLocation);
+    map.panTo(playerLocation);
   });
   movementButtons.append(button);
 }
