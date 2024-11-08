@@ -7,7 +7,7 @@ import "./style.css";
 
 import luck from "./luck.ts";
 
-import { Cell, Coin, GeoRect } from "./interfaces.ts";
+import { Cell, Coin, GeoRect, LatLng } from "./interfaces.ts";
 
 const app: HTMLDivElement = document.querySelector("#app")!;
 
@@ -26,6 +26,10 @@ const map = leaflet.map(document.getElementById("map")!, {
   keyboard: false,
   closePopupOnClick: false,
 });
+
+let playerLocation = leaflet.latLng(MAIN_LOCATION);
+const playerMarker = leaflet.marker(MAIN_LOCATION);
+playerMarker.addTo(map);
 
 // background image
 leaflet
@@ -50,12 +54,12 @@ const TILE_DEGREES = 1e-4;
 function getRectForCell(i: number, j: number): GeoRect {
   return {
     topLeft: {
-      lat: MAIN_LOCATION.lat + i * TILE_DEGREES,
-      lng: MAIN_LOCATION.lng + j * TILE_DEGREES,
+      lat: playerLocation.lat + i * TILE_DEGREES, // changed from MAIN_Location to playerlocation
+      lng: playerLocation.lng + j * TILE_DEGREES,
     },
     bottomRight: {
-      lat: MAIN_LOCATION.lat + (i + 1) * TILE_DEGREES,
-      lng: MAIN_LOCATION.lng + (j + 1) * TILE_DEGREES,
+      lat: playerLocation.lat + (i + 1) * TILE_DEGREES,
+      lng: playerLocation.lng + (j + 1) * TILE_DEGREES,
     },
   };
 }
@@ -189,10 +193,6 @@ createMovementButton("⬇️", -1, 0);
 createMovementButton("⬅️", 0, -1);
 createMovementButton("➡️", 0, 1);
 
-let playerLocation = leaflet.latLng(MAIN_LOCATION);
-const playerMarker = leaflet.marker(MAIN_LOCATION);
-playerMarker.addTo(map);
-
 function createMovementButton(text: string, xChange: number, yChange: number) {
   const button = document.createElement("button");
   button.innerHTML = text;
@@ -203,17 +203,36 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
     );
     playerMarker.setLatLng(playerLocation);
     map.panTo(playerLocation);
+    createCellsAroundPlayer();
   });
   movementButtons.append(button);
 }
 
-const NEIGHBORHOOD_SIZE = 8;
-const CACHE_SPAWN_PROBABILITY = 0.1;
-for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
-  for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
-    // If location i,j is lucky enough, spawn a cache!
-    if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
-      createCell(i, j);
+const cellList: LatLng[] = [];
+function createCellsAroundPlayer() {
+  const NEIGHBORHOOD_SIZE = 3;
+  const CACHE_SPAWN_PROBABILITY = 0.05;
+  for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
+    for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
+      // If location i,j is lucky enough, spawn a cache!
+      if (
+        luck([i * playerLocation.lat, j * playerLocation.lng].toString()) <
+          CACHE_SPAWN_PROBABILITY && validPosition(i, j)
+      ) {
+        createCell(i, j);
+        cellList.push({ lat: i, lng: j });
+      }
     }
   }
 }
+
+function validPosition(i: number, j: number) {
+  for (let x = 0; x < cellList.length; x++) {
+    if (cellList[x].lat == i && cellList[x].lng == j) {
+      return false;
+    }
+  }
+  return true;
+}
+
+createCellsAroundPlayer();
