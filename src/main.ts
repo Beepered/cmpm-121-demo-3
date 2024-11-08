@@ -7,6 +7,8 @@ import "./style.css";
 
 import luck from "./luck.ts";
 
+import { Cell, Coin, GeoRect } from "./interfaces.ts";
+
 const app: HTMLDivElement = document.querySelector("#app")!;
 
 const MAIN_LOCATION = leaflet.latLng(36.98949379578401, -122.06277128548504);
@@ -20,6 +22,9 @@ const map = leaflet.map(document.getElementById("map")!, {
   maxZoom: ZOOM_LEVEL,
   zoomControl: false,
   scrollWheelZoom: false,
+  dragging: false,
+  keyboard: false,
+  closePopupOnClick: false,
 });
 
 // background image
@@ -31,14 +36,9 @@ leaflet
   })
   .addTo(map);
 
+let playerLocation = leaflet.latLng(MAIN_LOCATION);
 const playerMarker = leaflet.marker(MAIN_LOCATION);
 playerMarker.addTo(map);
-
-interface Coin {
-  i: number;
-  j: number;
-  serial: number;
-}
 
 const playerCoins: Coin[] = [];
 const coinText = document.createElement("h1");
@@ -49,22 +49,6 @@ app.append(coinText);
 const inventoryText = document.createElement("p");
 inventoryText.style.textAlign = "center";
 app.append(inventoryText);
-
-interface Cell {
-  i: number;
-  j: number;
-  inventory: Coin[];
-}
-
-interface LatLng {
-  lat: number;
-  lng: number;
-}
-
-interface GeoRect {
-  topLeft: LatLng;
-  bottomRight: LatLng;
-}
 
 const TILE_DEGREES = 1e-4;
 function getRectForCell(i: number, j: number): GeoRect {
@@ -199,6 +183,26 @@ function updateGiveCoinDiv(cell: Cell, div: HTMLDivElement) {
     div.innerHTML += `<div>GIVE</div>`;
     displayGiveCoins(cell, div);
   }
+}
+
+const movementButtons = document.createElement("div");
+app.append(movementButtons);
+createMovementButton("⬆️", 1, 0);
+createMovementButton("⬇️", -1, 0);
+createMovementButton("⬅️", 0, -1);
+createMovementButton("➡️", 0, 1);
+
+function createMovementButton(text: string, xChange: number, yChange: number) {
+  const button = document.createElement("button");
+  button.innerHTML = text;
+  button.addEventListener("click", () => {
+    playerLocation = leaflet.latLng(
+      playerLocation.lat + xChange * TILE_DEGREES,
+      playerLocation.lng + yChange * TILE_DEGREES,
+    );
+    playerMarker.setLatLng(playerLocation);
+  });
+  movementButtons.append(button);
 }
 
 const NEIGHBORHOOD_SIZE = 8;
