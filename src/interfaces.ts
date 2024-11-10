@@ -24,6 +24,6 @@ export interface Cell { // just the rectangle
   rect: leaflet.Rectangle;
 }
 
-export interface NewCache { // inventory
+export interface CoinCache { // inventory
   inventory: Coin[];
 }

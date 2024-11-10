@@ -7,7 +7,7 @@ import "./style.css";
 
 import luck from "./luck.ts";
 
-import { Cell, Coin, GeoRect, NewCache } from "./interfaces.ts";
+import { Cell, Coin, CoinCache, GeoRect } from "./interfaces.ts";
 
 const app: HTMLDivElement = document.querySelector("#app")!;
 
@@ -117,7 +117,7 @@ function createCache(cell: Cell) {
   return cache;
 }
 
-function collect(cache: NewCache, coin: Coin) { // takes coin and gives to player
+function collect(cache: CoinCache, coin: Coin) { // takes coin and gives to player
   if (cache.inventory.length > 0) {
     playerCoins.push(coin);
     const index = cache.inventory.indexOf(coin);
@@ -125,7 +125,7 @@ function collect(cache: NewCache, coin: Coin) { // takes coin and gives to playe
     updateInventoryText();
   }
 }
-function deposit(cache: NewCache, coin: Coin) { // takes coin and gives to cell
+function deposit(cache: CoinCache, coin: Coin) { // takes coin and gives to cell
   if (playerCoins.length > 0) {
     cache.inventory.push(coin);
     const index = playerCoins.indexOf(coin);
@@ -134,7 +134,7 @@ function deposit(cache: NewCache, coin: Coin) { // takes coin and gives to cell
   }
 }
 
-function displayTakeCoins(cache: NewCache, div: HTMLDivElement) {
+function displayTakeCoins(cache: CoinCache, div: HTMLDivElement) {
   for (let x = 0; x < cache.inventory.length; x++) {
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
@@ -153,7 +153,7 @@ function displayTakeCoins(cache: NewCache, div: HTMLDivElement) {
   }
 }
 
-function displayGiveCoins(cache: NewCache, div: HTMLDivElement) {
+function displayGiveCoins(cache: CoinCache, div: HTMLDivElement) {
   for (let x = 0; x < playerCoins.length; x++) {
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
@@ -179,7 +179,7 @@ function updateInventoryText() {
   }
 }
 
-function updateTakeCoinDiv(cache: NewCache, div: HTMLDivElement) {
+function updateTakeCoinDiv(cache: CoinCache, div: HTMLDivElement) {
   div.innerHTML = ``;
   if (cache.inventory.length > 0) {
     div.innerHTML += `<div>TAKE</div>`;
@@ -187,7 +187,7 @@ function updateTakeCoinDiv(cache: NewCache, div: HTMLDivElement) {
   }
 }
 
-function updateGiveCoinDiv(cache: NewCache, div: HTMLDivElement) {
+function updateGiveCoinDiv(cache: CoinCache, div: HTMLDivElement) {
   div.innerHTML = ``;
   if (playerCoins.length > 0) {
     div.innerHTML += `<div>GIVE</div>`;
