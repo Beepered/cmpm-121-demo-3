@@ -7,7 +7,7 @@ import "./style.css";
 
 import luck from "./luck.ts";
 
-import { Cell, Coin, GeoRect, LatLng } from "./interfaces.ts";
+import { Cell, Coin, GeoRect } from "./interfaces.ts";
 
 const app: HTMLDivElement = document.querySelector("#app")!;
 
@@ -54,17 +54,17 @@ const TILE_DEGREES = 1e-4;
 function getRectForCell(i: number, j: number): GeoRect {
   return {
     topLeft: {
-      lat: playerLocation.lat + i * TILE_DEGREES, // changed from MAIN_Location to playerlocation
-      lng: playerLocation.lng + j * TILE_DEGREES,
+      lat: playerLocation.lat + (i - 0.5) * TILE_DEGREES,
+      lng: playerLocation.lng + (j - 0.5) * TILE_DEGREES,
     },
     bottomRight: {
-      lat: playerLocation.lat + (i + 1) * TILE_DEGREES,
-      lng: playerLocation.lng + (j + 1) * TILE_DEGREES,
+      lat: playerLocation.lat + (i + 0.5) * TILE_DEGREES,
+      lng: playerLocation.lng + (j + 0.5) * TILE_DEGREES,
     },
   };
 }
 
-function createCell(i: number, j: number) {
+function createCell(i: number, j: number): Cell {
   const bounds = getRectForCell(i, j);
   const rect = leaflet.rectangle([
     [bounds.topLeft.lat, bounds.topLeft.lng],
@@ -73,23 +73,27 @@ function createCell(i: number, j: number) {
 
   const inventory: Coin[] = [];
   for (
-    let i = 0;
-    i < Math.floor(luck([i, j, "initialValue"].toString()) * 10);
-    i++
+    let x = 0;
+    x < Math.floor(luck([x, j, "initialValue"].toString()) * 10);
+    x++
   ) {
     inventory.push({
-      i: Math.round(bounds.topLeft.lat / TILE_DEGREES),
-      j: Math.round(bounds.topLeft.lng / TILE_DEGREES),
-      serial: i,
+      i: Math.round((playerLocation.lat + i * TILE_DEGREES) / TILE_DEGREES),
+      j: Math.round(playerLocation.lng + i * TILE_DEGREES / TILE_DEGREES),
+      serial: x,
     });
   }
-  const cell = { i: i, j: j, inventory: inventory };
+  const cell = {
+    lat: playerLocation.lat + i * TILE_DEGREES,
+    lng: playerLocation.lng + j * TILE_DEGREES,
+    inventory: inventory,
+  };
 
   rect.addTo(map);
   rect.bindPopup(() => {
     const popup = document.createElement("div");
-    popup.innerHTML = `${Math.round(bounds.topLeft.lat / TILE_DEGREES)}, ${
-      Math.round(bounds.topLeft.lng / TILE_DEGREES)
+    popup.innerHTML = `${Math.round(cell.lat / TILE_DEGREES)}, ${
+      Math.round(cell.lng / TILE_DEGREES)
     }<br>`;
     const takeDiv = document.createElement("div");
     if (cell.inventory.length > 0) {
@@ -105,6 +109,8 @@ function createCell(i: number, j: number) {
     popup.append(giveDiv);
     return popup;
   });
+
+  return cell;
 }
 
 function collect(cell: Cell, coin: Coin) { // takes coin and gives to player
@@ -203,32 +209,34 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
     );
     playerMarker.setLatLng(playerLocation);
     map.panTo(playerLocation);
+
     createCellsAroundPlayer();
   });
   movementButtons.append(button);
 }
 
-const cellList: LatLng[] = [];
+const cellList: Cell[] = [];
 function createCellsAroundPlayer() {
-  const NEIGHBORHOOD_SIZE = 3;
+  console.clear();
+  const NEIGHBORHOOD_SIZE = 4;
   const CACHE_SPAWN_PROBABILITY = 0.05;
   for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
     for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
       // If location i,j is lucky enough, spawn a cache!
-      if (
-        luck([i * playerLocation.lat, j * playerLocation.lng].toString()) <
-          CACHE_SPAWN_PROBABILITY && validPosition(i, j)
-      ) {
-        createCell(i, j);
-        cellList.push({ lat: i, lng: j });
+      const tryI = playerLocation.lat + i * TILE_DEGREES;
+      const tryJ = playerLocation.lng + j * TILE_DEGREES;
+      if (luck([tryI, tryJ].toString()) < CACHE_SPAWN_PROBABILITY) {
+        if (freePosition(tryI, tryJ)) {
+          cellList.push(createCell(i, j));
+        }
       }
     }
   }
 }
 
-function validPosition(i: number, j: number) {
+function freePosition(i: number, j: number) {
   for (let x = 0; x < cellList.length; x++) {
-    if (cellList[x].lat == i && cellList[x].lng == j) {
+    if (i == cellList[x].lat && j == cellList[x].lng) {
       return false;
     }
   }

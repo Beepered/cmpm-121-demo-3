@@ -5,8 +5,8 @@ export interface Coin {
 }
 
 export interface Cell {
-  i: number;
-  j: number;
+  lat: number;
+  lng: number;
   inventory: Coin[];
 }
 
