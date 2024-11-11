@@ -27,3 +27,20 @@ export interface Cell { // just the rectangle
 export interface CoinCache { // inventory
   inventory: Coin[];
 }
+
+export interface StrMemento {
+  i: number;
+  j: number;
+  strMemento: string[];
+}
+
+export function coinToStr(coin: Coin): string {
+  return coin.i.toString() + ":" + coin.j.toString() + "#" + coin.serial;
+}
+
+export function strToCoin(str: string): Coin {
+  const i = parseInt(str.substring(0, str.indexOf(":")));
+  const j = parseInt(str.substring(str.indexOf(":") + 1, str.indexOf("#")));
+  const serial = parseInt(str.substring(str.indexOf("#") + 1));
+  return { i: i, j: j, serial: serial };
+}

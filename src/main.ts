@@ -7,7 +7,15 @@ import "./style.css";
 
 import luck from "./luck.ts";
 
-import { Cell, Coin, CoinCache, GeoRect } from "./interfaces.ts";
+import {
+  Cell,
+  Coin,
+  CoinCache,
+  coinToStr,
+  GeoRect,
+  StrMemento,
+  strToCoin,
+} from "./interfaces.ts";
 
 const app: HTMLDivElement = document.querySelector("#app")!;
 
@@ -79,7 +87,7 @@ function createCell(i: number, j: number): Cell {
   };
 }
 
-function createCache(cell: Cell) {
+function createCache(cell: Cell): CoinCache {
   const inventory: Coin[] = [];
   for (
     let x = 0;
@@ -118,24 +126,22 @@ function createCache(cell: Cell) {
   return cache;
 }
 
-function strToCoin(str: string): Coin {
-  const i = parseInt(str.substring(0, str.indexOf(":")));
-  const j = parseInt(str.substring(str.indexOf(":") + 1, str.indexOf("#")));
-  const serial = parseInt(str.substring(str.indexOf("#") + 1));
-  return { i: i, j: j, serial: serial };
+function _toCacheMemento(cache: CoinCache): string[] {
+  const strList: string[] = [];
+  for (let x = 0; x < cache.inventory.length; x++) {
+    strList.push(coinToStr(cache.inventory[x]));
+  }
+  return strList;
 }
 
-function toCacheMemento(cache: CoinCache) {
-  return cache.inventory.toString();
+function _fromCacheMemento(strList: string[]): Coin[] {
+  const coinList: Coin[] = [];
+  for (let x = 0; x < coinList.length; x++) {
+    coinList.push(strToCoin(strList[x]));
+  }
+  return coinList;
 }
-/*
-function fromCacheMemento(memento: string) : CoinCache{
-  const tempCache = parseInt(memento);
-  let oldCache : CoinCache;
-  oldCache.inventory = tempCache.inventory;
-  return oldCache;
-}
-*/
+
 function collect(cache: CoinCache, coin: Coin) { // takes coin and gives to player
   if (cache.inventory.length > 0) {
     playerCoins.push(coin);
@@ -238,7 +244,7 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
   movementButtons.append(button);
 }
 
-const cacheList: string[] = []; // maybe make into list of list of strings, so each sublist is for a cache?
+const _cacheStrList: StrMemento[] = [];
 function createCellsAroundPlayer() {
   const NEIGHBORHOOD_SIZE = 4;
   const CACHE_SPAWN_PROBABILITY = 0.05;
@@ -250,13 +256,8 @@ function createCellsAroundPlayer() {
       if (luck([tryI, tryJ].toString()) < CACHE_SPAWN_PROBABILITY) {
         const cell = createCell(i, j);
         if (freePosition()) {
-          const cache = createCache(cell);
-          cacheList.push(toCacheMemento(cache));
-        } else {
-          /*
-          const cache = fromCacheMemento(cacheList[0])
-          createCache(cell, cache.inventory)
-          */
+          createCache(cell);
+          //cacheStrList.push(toCacheMemento(cache));
         }
       }
     }
@@ -272,3 +273,7 @@ createCellsAroundPlayer();
 const str = "11:22#33";
 const newCoin = strToCoin(str);
 console.log(newCoin);
+
+const coin = { i: 5, j: 4, serial: 3 };
+const newStr = coinToStr(coin);
+console.log(newStr);
