@@ -13,6 +13,7 @@ import {
   CoinCache,
   coinToStr,
   GeoRect,
+  LatLng,
   StrMemento,
   strToCoin,
 } from "./interfaces.ts";
@@ -250,7 +251,8 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
   movementButtons.append(button);
 }
 
-const cellList: Cell[] = [];
+let cellList: Cell[] = []; // store cells to delete rects from
+const positionList: LatLng[] = [];
 const cacheStrList: StrMemento[] = [];
 function createCellsAroundPlayer() {
   const NEIGHBORHOOD_SIZE = 4;
@@ -262,8 +264,9 @@ function createCellsAroundPlayer() {
       const tryJ = playerLocation.lng + j * TILE_DEGREES;
       if (luck([tryI, tryJ].toString()) < CACHE_SPAWN_PROBABILITY) {
         const cell = createCell(i, j);
+        cellList.push(cell);
         if (freePosition(cell)) {
-          cellList.push(cell);
+          positionList.push({ lat: cell.lat, lng: cell.lng });
           const cache = createCache(cell);
           cacheStrList.push({ i: i, j: j, strMemento: toCacheMemento(cache) });
         } else {
@@ -275,20 +278,18 @@ function createCellsAroundPlayer() {
 }
 
 function freePosition(cell: Cell) {
-  for (let x = 0; x < cellList.length; x++) {
-    if (cell.lat == cellList[x].lat && cell.lng == cellList[x].lng) {
+  for (let x = 0; x < positionList.length; x++) {
+    if (cell.lat == positionList[x].lat && cell.lng == positionList[x].lng) {
       return false;
     }
   }
-  //console.log(`${Math.round(cell.lat / TILE_DEGREES)}:${Math.round(cell.lng / TILE_DEGREES)} free`)
   return true;
 }
-
 function clearRectangles() {
   for (let x = 0; x < cellList.length; x++) {
     cellList[x].rect.remove();
   }
-  console.log(cellList.length);
+  cellList = [];
 }
 
 createCellsAroundPlayer();
