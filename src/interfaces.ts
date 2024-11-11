@@ -28,9 +28,7 @@ export interface CoinCache { // inventory
   inventory: Coin[];
 }
 
-export interface StrMemento {
-  i: number;
-  j: number;
+export interface CacheMemento {
   strMemento: string[];
 }
 
