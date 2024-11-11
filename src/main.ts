@@ -87,18 +87,23 @@ function createCell(i: number, j: number): Cell {
   };
 }
 
-function createCache(cell: Cell): CoinCache {
-  const inventory: Coin[] = [];
-  for (
-    let x = 0;
-    x < Math.floor(luck([cell.lat, cell.lng, "initialValue"].toString()) * 10);
-    x++
-  ) {
-    inventory.push({
-      i: Math.round(cell.lat / TILE_DEGREES),
-      j: Math.round(cell.lng / TILE_DEGREES),
-      serial: x,
-    });
+function createCache(cell: Cell, coins: Coin[] = []): CoinCache {
+  let inventory: Coin[] = [];
+  if (coins.length == 0) {
+    for (
+      let x = 0;
+      x <
+        Math.floor(luck([cell.lat, cell.lng, "initialValue"].toString()) * 10);
+      x++
+    ) {
+      inventory.push({
+        i: Math.round(cell.lat / TILE_DEGREES),
+        j: Math.round(cell.lng / TILE_DEGREES),
+        serial: x,
+      });
+    }
+  } else {
+    inventory = coins;
   }
 
   const cache = { inventory: inventory };
@@ -126,7 +131,7 @@ function createCache(cell: Cell): CoinCache {
   return cache;
 }
 
-function _toCacheMemento(cache: CoinCache): string[] {
+function toCacheMemento(cache: CoinCache): string[] {
   const strList: string[] = [];
   for (let x = 0; x < cache.inventory.length; x++) {
     strList.push(coinToStr(cache.inventory[x]));
@@ -239,12 +244,14 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
     playerMarker.setLatLng(playerLocation);
     map.panTo(playerLocation);
 
+    clearRectangles();
     createCellsAroundPlayer();
   });
   movementButtons.append(button);
 }
 
-const _cacheStrList: StrMemento[] = [];
+const cellList: Cell[] = [];
+const cacheStrList: StrMemento[] = [];
 function createCellsAroundPlayer() {
   const NEIGHBORHOOD_SIZE = 4;
   const CACHE_SPAWN_PROBABILITY = 0.05;
@@ -255,25 +262,33 @@ function createCellsAroundPlayer() {
       const tryJ = playerLocation.lng + j * TILE_DEGREES;
       if (luck([tryI, tryJ].toString()) < CACHE_SPAWN_PROBABILITY) {
         const cell = createCell(i, j);
-        if (freePosition()) {
-          createCache(cell);
-          //cacheStrList.push(toCacheMemento(cache));
+        if (freePosition(cell)) {
+          cellList.push(cell);
+          const cache = createCache(cell);
+          cacheStrList.push({ i: i, j: j, strMemento: toCacheMemento(cache) });
+        } else {
+          createCache(cell, [{ i: 0, j: 0, serial: 1 }]);
         }
       }
     }
   }
 }
 
-function freePosition() {
+function freePosition(cell: Cell) {
+  for (let x = 0; x < cellList.length; x++) {
+    if (cell.lat == cellList[x].lat && cell.lng == cellList[x].lng) {
+      return false;
+    }
+  }
+  //console.log(`${Math.round(cell.lat / TILE_DEGREES)}:${Math.round(cell.lng / TILE_DEGREES)} free`)
   return true;
 }
 
+function clearRectangles() {
+  for (let x = 0; x < cellList.length; x++) {
+    cellList[x].rect.remove();
+  }
+  console.log(cellList.length);
+}
+
 createCellsAroundPlayer();
-
-const str = "11:22#33";
-const newCoin = strToCoin(str);
-console.log(newCoin);
-
-const coin = { i: 5, j: 4, serial: 3 };
-const newStr = coinToStr(coin);
-console.log(newStr);
