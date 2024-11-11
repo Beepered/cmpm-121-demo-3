@@ -92,6 +92,7 @@ function createCache(cell: Cell) {
       serial: x,
     });
   }
+
   const cache = { inventory: inventory };
 
   cell.rect.bindPopup(() => {
@@ -117,6 +118,24 @@ function createCache(cell: Cell) {
   return cache;
 }
 
+function strToCoin(str: string): Coin {
+  const i = parseInt(str.substring(0, str.indexOf(":")));
+  const j = parseInt(str.substring(str.indexOf(":") + 1, str.indexOf("#")));
+  const serial = parseInt(str.substring(str.indexOf("#") + 1));
+  return { i: i, j: j, serial: serial };
+}
+
+function toCacheMemento(cache: CoinCache) {
+  return cache.inventory.toString();
+}
+/*
+function fromCacheMemento(memento: string) : CoinCache{
+  const tempCache = parseInt(memento);
+  let oldCache : CoinCache;
+  oldCache.inventory = tempCache.inventory;
+  return oldCache;
+}
+*/
 function collect(cache: CoinCache, coin: Coin) { // takes coin and gives to player
   if (cache.inventory.length > 0) {
     playerCoins.push(coin);
@@ -219,6 +238,7 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
   movementButtons.append(button);
 }
 
+const cacheList: string[] = []; // maybe make into list of list of strings, so each sublist is for a cache?
 function createCellsAroundPlayer() {
   const NEIGHBORHOOD_SIZE = 4;
   const CACHE_SPAWN_PROBABILITY = 0.05;
@@ -228,11 +248,27 @@ function createCellsAroundPlayer() {
       const tryI = playerLocation.lat + i * TILE_DEGREES;
       const tryJ = playerLocation.lng + j * TILE_DEGREES;
       if (luck([tryI, tryJ].toString()) < CACHE_SPAWN_PROBABILITY) {
-        const x = createCell(i, j);
-        createCache(x);
+        const cell = createCell(i, j);
+        if (freePosition()) {
+          const cache = createCache(cell);
+          cacheList.push(toCacheMemento(cache));
+        } else {
+          /*
+          const cache = fromCacheMemento(cacheList[0])
+          createCache(cell, cache.inventory)
+          */
+        }
       }
     }
   }
 }
 
+function freePosition() {
+  return true;
+}
+
 createCellsAroundPlayer();
+
+const str = "11:22#33";
+const newCoin = strToCoin(str);
+console.log(newCoin);
