@@ -14,7 +14,6 @@ import {
   CoinCache,
   coinToStr,
   GeoRect,
-  LatLng,
   strToCoin,
 } from "./interfaces.ts";
 
@@ -245,14 +244,15 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
     playerMarker.setLatLng(playerLocation);
     map.panTo(playerLocation);
 
+    saveCaches();
     clearRectangles();
     createCellsAroundPlayer();
   });
   movementButtons.append(button);
 }
 
-let rectList: leaflet.Rectangle[] = []; // store cells to delete rects from
-const positionList: LatLng[] = [];
+const cellList: Cell[] = []; // store cells to delete rects from
+const cacheList: CoinCache[] = [];
 const cacheStrList: CacheMemento[] = [];
 function createCellsAroundPlayer() {
   const NEIGHBORHOOD_SIZE = 4;
@@ -264,15 +264,15 @@ function createCellsAroundPlayer() {
       const tryJ = playerLocation.lng + j * TILE_DEGREES;
       if (luck([tryI, tryJ].toString()) < CACHE_SPAWN_PROBABILITY) {
         const cell = createCell(i, j);
-        rectList.push(cell.rect);
         if (freePosition(cell)) {
-          positionList.push({ lat: cell.lat, lng: cell.lng });
+          cellList.push(cell);
           const cache = createCache(cell);
-          cacheStrList.push({ strMemento: toCacheMemento(cache) });
+          cacheList.push(cache);
+          cacheStrList.push({ memento: toCacheMemento(cache) });
         } else {
           createCache(
             cell,
-            fromCacheMemento(cacheStrList[getCacheMemento(cell)].strMemento),
+            fromCacheMemento(cacheStrList[getCacheMemento(cell)].memento),
           );
         }
       }
@@ -281,54 +281,61 @@ function createCellsAroundPlayer() {
 }
 
 function freePosition(cell: Cell) {
-  for (let x = 0; x < positionList.length; x++) {
-    if (cell.lat == positionList[x].lat && cell.lng == positionList[x].lng) {
+  for (let x = 0; x < cellList.length; x++) {
+    if (cell.lat == cellList[x].lat && cell.lng == cellList[x].lng) {
       return false;
     }
   }
   return true;
 }
 
-function clearRectangles() {
-  for (let x = 0; x < rectList.length; x++) {
-    rectList[x].remove();
+function saveCaches() {
+  /*
+  for(let x = 0; x < cacheList.length; x++){ // save caches of all cells in field
+    const memento = { memento: toCacheMemento(cacheList[x]) } // create new memento
+    // check if cache exists in cacheStrList
+      //if true
+        // save to that position
+      //else
+        // push
+    cacheStrList.push();
   }
-  rectList = [];
+  */
 }
 
-function getCacheMemento(cell: Cell): number {
+function clearRectangles() {
+  for (let x = 0; x < cellList.length; x++) {
+    cellList[x].rect.remove();
+  }
+}
+
+function getCacheMemento(cell: Cell): number { // gets the index of cell which correlates to index in cacheList
   let index = 0;
-  for (let x = 0; x < positionList.length; x++) {
-    if (cell.lat == positionList[x].lat && cell.lng == positionList[x].lng) {
+  for (let x = 0; x < cellList.length; x++) {
+    if (cell.lat == cellList[x].lat && cell.lng == cellList[x].lng) {
       index = x;
     }
   }
-  console.log(`index; ${index}`);
   return index;
 }
 
 createCellsAroundPlayer();
 /*
 let cell = createCell(0, 0);
-rectList.push(cell.rect);
 if (freePosition(cell)) {
-  positionList.push({ lat: cell.lat, lng: cell.lng });
-  const cache = createCache(cell);
-  cacheStrList.push({ strMemento: toCacheMemento(cache) });
+  cellList.push(cell);
+  createCache(cell);
 }
 
 clearRectangles();
 
 cell = createCell(0, 0);
-rectList.push(cell.rect);
 if (freePosition(cell)) {
-  console.log("created cell again")
-  positionList.push({ lat: cell.lat, lng: cell.lng });
-  const cache = createCache(cell);
-  cacheStrList.push({ strMemento: toCacheMemento(cache) });
+  cellList.push(cell);
+  createCache(cell);
+  console.log("position free")
 }
 else{
-  console.log("cell exist")
-  createCache(cell, fromCacheMemento(cacheStrList[getCacheMemento(cell)].strMemento))
+  createCache(cell, [{i: 0, j: 0, serial: 3}])
 }
-  */
+*/

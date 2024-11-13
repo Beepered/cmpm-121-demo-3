@@ -29,7 +29,7 @@ export interface CoinCache { // inventory
 }
 
 export interface CacheMemento {
-  strMemento: string[];
+  memento: string[];
 }
 
 export function coinToStr(coin: Coin): string {
