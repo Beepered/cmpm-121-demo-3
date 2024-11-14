@@ -195,10 +195,19 @@ function updateCellDiv(
 }
 
 function getCellForLatLng(latLng: LatLng): Cell {
-  return {
-    i: Math.floor(latLng.lat / DEGREES_PER_TILE),
-    j: Math.floor(latLng.lng / DEGREES_PER_TILE),
-  };
+  return getCanonicalCell(
+    Math.floor(latLng.lat / DEGREES_PER_TILE),
+    Math.floor(latLng.lng / DEGREES_PER_TILE),
+  );
+}
+
+const cellMap = new Map<string, Cell>();
+function getCanonicalCell(i: number, j: number): Cell {
+  const key = `${i},${j}`;
+  if (!cellMap.has(key)) {
+    cellMap.set(key, { i, j });
+  }
+  return cellMap.get(key)!;
 }
 
 function createCellsAroundPlayer() {
@@ -211,7 +220,7 @@ function createCellsAroundPlayer() {
       const i = playerCell.i + dI;
       const j = playerCell.j + dJ;
       if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
-        createCache({ i, j });
+        createCache(getCanonicalCell(i, j));
       }
     }
   }
