@@ -7,7 +7,7 @@ import "./style.css";
 
 import luck from "./luck.ts";
 
-import { Cell, Coin, GeoRect, LatLng } from "./interfaces.ts";
+import { Cell, Coin, GeoCache, GeoRect, LatLng } from "./interfaces.ts";
 
 const bus = new EventTarget();
 
@@ -70,7 +70,7 @@ function getRectForCell(i: number, j: number): GeoRect {
   };
 }
 
-function createCache(cell: Cell): Coin[] {
+function createCache(cell: Cell): GeoCache {
   const inventory: Coin[] = [];
   for (
     let x = 0;
@@ -106,7 +106,7 @@ function createCache(cell: Cell): Coin[] {
   return inventory;
 }
 
-function collect(cache: Coin[], coin: Coin) { // takes coin and gives to player
+function collect(cache: GeoCache, coin: Coin) { // takes coin and gives to player
   if (cache.length > 0) {
     playerCoins.push(coin);
     const index = cache.indexOf(coin);
@@ -114,7 +114,7 @@ function collect(cache: Coin[], coin: Coin) { // takes coin and gives to player
     updateInventoryText();
   }
 }
-function deposit(cache: Coin[], coin: Coin) { // takes coin and gives to cell
+function deposit(cache: GeoCache, coin: Coin) { // takes coin and gives to cell
   if (playerCoins.length > 0) {
     cache.push(coin);
     const index = playerCoins.indexOf(coin);
@@ -124,7 +124,7 @@ function deposit(cache: Coin[], coin: Coin) { // takes coin and gives to cell
 }
 
 function displayTakeCoins(
-  cache: Coin[],
+  cache: GeoCache,
   takeDiv: HTMLDivElement,
   giveDiv: HTMLDivElement,
 ) {
@@ -145,7 +145,7 @@ function displayTakeCoins(
 }
 
 function displayGiveCoins(
-  cache: Coin[],
+  cache: GeoCache,
   takeDiv: HTMLDivElement,
   giveDiv: HTMLDivElement,
 ) {
@@ -177,7 +177,7 @@ function updateInventoryText() {
 }
 
 function updateCellDiv(
-  cache: Coin[],
+  cache: GeoCache,
   takeDiv: HTMLDivElement,
   giveDiv: HTMLDivElement,
 ) {

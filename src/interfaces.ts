@@ -17,3 +17,5 @@ export interface Coin {
   homeCell: Cell;
   serial: number;
 }
+
+export type GeoCache = Coin[];
