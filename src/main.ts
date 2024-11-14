@@ -242,6 +242,13 @@ function createCellsAroundPlayer() {
   }
 }
 
+function saveCaches() {
+  for (const [cell, cache] of knownCaches) {
+    cacheMomentos.set(cell, getMomentoForCache(cache));
+  }
+  knownCaches.clear();
+}
+
 function clearRectangles() {
   map.eachLayer(function (layer: leaflet.Layer) {
     if (layer instanceof leaflet.Rectangle) {
@@ -273,11 +280,7 @@ bus.addEventListener("player-moved", () => {
   playerMarker.setLatLng(playerLocation);
   map.panTo(playerLocation);
 
-  for (const [cell, cache] of knownCaches) {
-    cacheMomentos.set(cell, getMomentoForCache(cache));
-  }
-  knownCaches.clear();
-
+  saveCaches();
   clearRectangles();
   createCellsAroundPlayer();
 });
