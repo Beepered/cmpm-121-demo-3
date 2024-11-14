@@ -71,17 +71,16 @@ function getRectForCell(i: number, j: number): GeoRect {
 }
 
 function createCache(cell: Cell): GeoCache {
-  const inventory: Coin[] = [];
-  for (
-    let x = 0;
-    x <
-      Math.floor(luck([cell.i, cell.j, "initialValue"].toString()) * 10);
-    x++
-  ) {
-    inventory.push({
-      homeCell: cell,
-      serial: x,
-    });
+  let inventory: Coin[] = [];
+  if (cacheMomentos.has(cell)) {
+    inventory = getCacheForMomento(cacheMomentos.get(cell)!);
+  } else {
+    const numCoins = Math.floor(
+      luck([cell.i, cell.j, "initialValue"].toString()) * 10,
+    );
+    for (let x = 0; x < numCoins; x++) {
+      inventory.push({ homeCell: cell, serial: x });
+    }
   }
 
   const bounds = getRectForCell(cell.i, cell.j);
@@ -210,6 +209,22 @@ function getCanonicalCell(i: number, j: number): Cell {
   return cellMap.get(key)!;
 }
 
+function getMomentoForCache(cache: GeoCache): string {
+  return JSON.stringify(cache);
+}
+
+function getCacheForMomento(str: string): GeoCache {
+  const cache = JSON.parse(str);
+  for (const coin of cache) {
+    const { i, j } = coin.homeCell;
+    coin.homeCell = getCanonicalCell(i, j);
+  }
+  return cache;
+}
+
+const knownCaches = new Map<Cell, GeoCache>();
+const cacheMomentos = new Map<Cell, string>();
+
 function createCellsAroundPlayer() {
   const playerCell = getCellForLatLng(playerLocation);
   const NEIGHBORHOOD_SIZE = 5;
@@ -220,7 +235,8 @@ function createCellsAroundPlayer() {
       const i = playerCell.i + dI;
       const j = playerCell.j + dJ;
       if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
-        createCache(getCanonicalCell(i, j));
+        const cell = getCanonicalCell(i, j);
+        knownCaches.set(cell, createCache(cell));
       }
     }
   }
@@ -256,6 +272,12 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
 bus.addEventListener("player-moved", () => {
   playerMarker.setLatLng(playerLocation);
   map.panTo(playerLocation);
+
+  for (const [cell, cache] of knownCaches) {
+    cacheMomentos.set(cell, getMomentoForCache(cache));
+  }
+  knownCaches.clear();
+
   clearRectangles();
   createCellsAroundPlayer();
 });
