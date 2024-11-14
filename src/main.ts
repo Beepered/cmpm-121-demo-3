@@ -7,15 +7,9 @@ import "./style.css";
 
 import luck from "./luck.ts";
 
-import {
-  CacheMemento,
-  Cell,
-  Coin,
-  CoinCache,
-  coinToStr,
-  GeoRect,
-  strToCoin,
-} from "./interfaces.ts";
+import { Cell, Coin, GeoRect, LatLng } from "./interfaces.ts";
+
+const bus = new EventTarget();
 
 const app: HTMLDivElement = document.querySelector("#app")!;
 
@@ -35,8 +29,11 @@ const map = leaflet.map(document.getElementById("map")!, {
   closePopupOnClick: false,
 });
 
-let playerLocation = leaflet.latLng(MAIN_LOCATION);
-const playerMarker = leaflet.marker(MAIN_LOCATION);
+const playerLocation: LatLng = {
+  lat: MAIN_LOCATION.lat,
+  lng: MAIN_LOCATION.lng,
+};
+const playerMarker = leaflet.marker(playerLocation);
 playerMarker.addTo(map);
 
 // background image
@@ -49,6 +46,7 @@ leaflet
   .addTo(map);
 
 const playerCoins: Coin[] = [];
+
 const coinText = document.createElement("h1");
 coinText.innerHTML = `inventory:`;
 coinText.style.textAlign = "center";
@@ -58,132 +56,99 @@ const inventoryText = document.createElement("p");
 inventoryText.style.textAlign = "center";
 app.append(inventoryText);
 
-const TILE_DEGREES = 1e-4;
+const DEGREES_PER_TILE = 1e-4;
 function getRectForCell(i: number, j: number): GeoRect {
   return {
     topLeft: {
-      lat: playerLocation.lat + (i - 0.5) * TILE_DEGREES,
-      lng: playerLocation.lng + (j - 0.5) * TILE_DEGREES,
+      lat: (i - 0.5) * DEGREES_PER_TILE,
+      lng: (j - 0.5) * DEGREES_PER_TILE,
     },
     bottomRight: {
-      lat: playerLocation.lat + (i + 0.5) * TILE_DEGREES,
-      lng: playerLocation.lng + (j + 0.5) * TILE_DEGREES,
+      lat: (i + 0.5) * DEGREES_PER_TILE,
+      lng: (j + 0.5) * DEGREES_PER_TILE,
     },
   };
 }
 
-function createCell(i: number, j: number): Cell {
-  const bounds = getRectForCell(i, j);
+function createCache(cell: Cell): Coin[] {
+  const inventory: Coin[] = [];
+  for (
+    let x = 0;
+    x <
+      Math.floor(luck([cell.i, cell.j, "initialValue"].toString()) * 10);
+    x++
+  ) {
+    inventory.push({
+      homeCell: cell,
+      serial: x,
+    });
+  }
+
+  const bounds = getRectForCell(cell.i, cell.j);
   const rect = leaflet.rectangle([
     [bounds.topLeft.lat, bounds.topLeft.lng],
     [bounds.bottomRight.lat, bounds.bottomRight.lng],
   ]);
   rect.addTo(map);
 
-  return {
-    lat: playerLocation.lat + i * TILE_DEGREES,
-    lng: playerLocation.lng + j * TILE_DEGREES,
-    rect: rect,
-  };
-}
-
-function createCache(cell: Cell, coins: Coin[] = []): CoinCache {
-  let inventory: Coin[] = [];
-  if (coins.length == 0) {
-    for (
-      let x = 0;
-      x <
-        Math.floor(luck([cell.lat, cell.lng, "initialValue"].toString()) * 10);
-      x++
-    ) {
-      inventory.push({
-        i: Math.round(cell.lat / TILE_DEGREES),
-        j: Math.round(cell.lng / TILE_DEGREES),
-        serial: x,
-      });
-    }
-  } else {
-    inventory = coins;
-  }
-
-  const cache = { inventory: inventory };
-
-  cell.rect.bindPopup(() => {
+  rect.bindPopup(() => {
     const popup = document.createElement("div");
-    popup.innerHTML = `${Math.round(cell.lat / TILE_DEGREES)}, ${
-      Math.round(cell.lng / TILE_DEGREES)
-    }<br>`;
+    popup.innerHTML = `${cell.i}, ${cell.j}<br>`;
     const takeDiv = document.createElement("div");
-    if (cache.inventory.length > 0) {
-      takeDiv.innerHTML += `<div>TAKE</div>`;
-      displayTakeCoins(cache, takeDiv);
-    }
     popup.append(takeDiv);
     const giveDiv = document.createElement("div");
-    if (playerCoins.length > 0) {
-      giveDiv.innerHTML += `<div>GIVE</div>`;
-      displayGiveCoins(cache, giveDiv);
-    }
     popup.append(giveDiv);
+    updateCellDiv(inventory, takeDiv, giveDiv);
     return popup;
   });
+  rect.addTo(map);
 
-  return cache;
+  return inventory;
 }
 
-function toCacheMemento(cache: CoinCache): string[] {
-  const strList: string[] = [];
-  for (let x = 0; x < cache.inventory.length; x++) {
-    strList.push(coinToStr(cache.inventory[x]));
-  }
-  return strList;
-}
-
-function fromCacheMemento(strList: string[]): Coin[] {
-  const coinList: Coin[] = [];
-  for (let x = 0; x < coinList.length; x++) {
-    coinList.push(strToCoin(strList[x]));
-  }
-  return coinList;
-}
-
-function collect(cache: CoinCache, coin: Coin) { // takes coin and gives to player
-  if (cache.inventory.length > 0) {
+function collect(cache: Coin[], coin: Coin) { // takes coin and gives to player
+  if (cache.length > 0) {
     playerCoins.push(coin);
-    const index = cache.inventory.indexOf(coin);
-    cache.inventory.splice(index, 1);
+    const index = cache.indexOf(coin);
+    cache.splice(index, 1);
     updateInventoryText();
   }
 }
-function deposit(cache: CoinCache, coin: Coin) { // takes coin and gives to cell
+function deposit(cache: Coin[], coin: Coin) { // takes coin and gives to cell
   if (playerCoins.length > 0) {
-    cache.inventory.push(coin);
+    cache.push(coin);
     const index = playerCoins.indexOf(coin);
     playerCoins.splice(index, 1);
     updateInventoryText();
   }
 }
 
-function displayTakeCoins(cache: CoinCache, div: HTMLDivElement) {
-  for (let x = 0; x < cache.inventory.length; x++) {
+function displayTakeCoins(
+  cache: Coin[],
+  takeDiv: HTMLDivElement,
+  giveDiv: HTMLDivElement,
+) {
+  for (let x = 0; x < cache.length; x++) {
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
     button.innerHTML = `take`;
     buttonDiv.append(button);
     button.addEventListener("click", () => {
-      collect(cache, cache.inventory[x]);
-      updateTakeCoinDiv(cache, div);
+      collect(cache, cache[x]);
+      updateCellDiv(cache, takeDiv, giveDiv);
     });
     buttonDiv.append(
-      `${cache.inventory[x].i}:${cache.inventory[x].j}#${
-        cache.inventory[x].serial
-      }`,
+      `${cache[x].homeCell.i}:${cache[x].homeCell.j}#${cache[x].serial}`,
     );
-    div.append(buttonDiv);
+    takeDiv.append(buttonDiv);
   }
 }
 
-function displayGiveCoins(cache: CoinCache, div: HTMLDivElement) {
+function displayGiveCoins(
+  cache: Coin[],
+  takeDiv: HTMLDivElement,
+  giveDiv: HTMLDivElement,
+) {
   for (let x = 0; x < playerCoins.length; x++) {
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
@@ -191,38 +156,73 @@ function displayGiveCoins(cache: CoinCache, div: HTMLDivElement) {
     buttonDiv.append(button);
     button.addEventListener("click", () => {
       deposit(cache, playerCoins[x]);
-      updateGiveCoinDiv(cache, div);
+      updateCellDiv(cache, takeDiv, giveDiv);
     });
     buttonDiv.append(
-      `${playerCoins[x].i}:${playerCoins[x].j}#${playerCoins[x].serial}`,
+      `${playerCoins[x].homeCell.i}:${playerCoins[x].homeCell.j}#${
+        playerCoins[x].serial
+      }`,
     );
-    div.append(buttonDiv);
+    giveDiv.append(buttonDiv);
   }
 }
 
 function updateInventoryText() {
   inventoryText.innerHTML = ``;
   for (let x = 0; x < playerCoins.length; x++) {
-    inventoryText.innerHTML += `${playerCoins[x].i}:${playerCoins[x].j}#${
-      playerCoins[x].serial
-    }<br>`;
+    inventoryText.innerHTML += `${playerCoins[x].homeCell.i}:${
+      playerCoins[x].homeCell.j
+    }#${playerCoins[x].serial}<br>`;
   }
 }
 
-function updateTakeCoinDiv(cache: CoinCache, div: HTMLDivElement) {
-  div.innerHTML = ``;
-  if (cache.inventory.length > 0) {
-    div.innerHTML += `<div>TAKE</div>`;
-    displayTakeCoins(cache, div);
+function updateCellDiv(
+  cache: Coin[],
+  takeDiv: HTMLDivElement,
+  giveDiv: HTMLDivElement,
+) {
+  takeDiv.innerHTML = ``;
+  if (cache.length > 0) {
+    takeDiv.innerHTML += `<div>TAKE</div>`;
+    displayTakeCoins(cache, takeDiv, giveDiv);
   }
-}
 
-function updateGiveCoinDiv(cache: CoinCache, div: HTMLDivElement) {
-  div.innerHTML = ``;
+  giveDiv.innerHTML = ``;
   if (playerCoins.length > 0) {
-    div.innerHTML += `<div>GIVE</div>`;
-    displayGiveCoins(cache, div);
+    giveDiv.innerHTML += `<div>GIVE</div>`;
+    displayGiveCoins(cache, takeDiv, giveDiv);
   }
+}
+
+function getCellForLatLng(latLng: LatLng): Cell {
+  return {
+    i: Math.floor(latLng.lat / DEGREES_PER_TILE),
+    j: Math.floor(latLng.lng / DEGREES_PER_TILE),
+  };
+}
+
+function createCellsAroundPlayer() {
+  const playerCell = getCellForLatLng(playerLocation);
+  const NEIGHBORHOOD_SIZE = 5;
+  const CACHE_SPAWN_PROBABILITY = 0.1;
+  for (let dI = -NEIGHBORHOOD_SIZE; dI < NEIGHBORHOOD_SIZE; dI++) {
+    for (let dJ = -NEIGHBORHOOD_SIZE; dJ < NEIGHBORHOOD_SIZE; dJ++) {
+      // If location i,j is lucky enough, spawn a cache!
+      const i = playerCell.i + dI;
+      const j = playerCell.j + dJ;
+      if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) {
+        createCache({ i, j });
+      }
+    }
+  }
+}
+
+function clearRectangles() {
+  map.eachLayer(function (layer: leaflet.Layer) {
+    if (layer instanceof leaflet.Rectangle) {
+      map.removeLayer(layer);
+    }
+  });
 }
 
 const movementButtons = document.createElement("div");
@@ -237,105 +237,18 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
   const button = document.createElement("button");
   button.innerHTML = text;
   button.addEventListener("click", () => {
-    playerLocation = leaflet.latLng(
-      playerLocation.lat + xChange * TILE_DEGREES,
-      playerLocation.lng + yChange * TILE_DEGREES,
-    );
-    playerMarker.setLatLng(playerLocation);
-    map.panTo(playerLocation);
-
-    saveCaches();
-    clearRectangles();
-    createCellsAroundPlayer();
+    playerLocation.lat += xChange * DEGREES_PER_TILE;
+    playerLocation.lng += yChange * DEGREES_PER_TILE;
+    bus.dispatchEvent(new Event("player-moved"));
   });
   movementButtons.append(button);
 }
 
-const cellList: Cell[] = []; // store cells to delete rects from
-const cacheList: CoinCache[] = [];
-const cacheStrList: CacheMemento[] = [];
-function createCellsAroundPlayer() {
-  const NEIGHBORHOOD_SIZE = 4;
-  const CACHE_SPAWN_PROBABILITY = 0.05;
-  for (let i = -NEIGHBORHOOD_SIZE; i < NEIGHBORHOOD_SIZE; i++) {
-    for (let j = -NEIGHBORHOOD_SIZE; j < NEIGHBORHOOD_SIZE; j++) {
-      // If location i,j is lucky enough, spawn a cache!
-      const tryI = playerLocation.lat + i * TILE_DEGREES;
-      const tryJ = playerLocation.lng + j * TILE_DEGREES;
-      if (luck([tryI, tryJ].toString()) < CACHE_SPAWN_PROBABILITY) {
-        const cell = createCell(i, j);
-        if (freePosition(cell)) {
-          cellList.push(cell);
-          const cache = createCache(cell);
-          cacheList.push(cache);
-          cacheStrList.push({ memento: toCacheMemento(cache) });
-        } else {
-          createCache(
-            cell,
-            fromCacheMemento(cacheStrList[getCacheMemento(cell)].memento),
-          );
-        }
-      }
-    }
-  }
-}
-
-function freePosition(cell: Cell) {
-  for (let x = 0; x < cellList.length; x++) {
-    if (cell.lat == cellList[x].lat && cell.lng == cellList[x].lng) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function saveCaches() {
-  /*
-  for(let x = 0; x < cacheList.length; x++){ // save caches of all cells in field
-    const memento = { memento: toCacheMemento(cacheList[x]) } // create new memento
-    // check if cache exists in cacheStrList
-      //if true
-        // save to that position
-      //else
-        // push
-    cacheStrList.push();
-  }
-  */
-}
-
-function clearRectangles() {
-  for (let x = 0; x < cellList.length; x++) {
-    cellList[x].rect.remove();
-  }
-}
-
-function getCacheMemento(cell: Cell): number { // gets the index of cell which correlates to index in cacheList
-  let index = 0;
-  for (let x = 0; x < cellList.length; x++) {
-    if (cell.lat == cellList[x].lat && cell.lng == cellList[x].lng) {
-      index = x;
-    }
-  }
-  return index;
-}
+bus.addEventListener("player-moved", () => {
+  playerMarker.setLatLng(playerLocation);
+  map.panTo(playerLocation);
+  clearRectangles();
+  createCellsAroundPlayer();
+});
 
 createCellsAroundPlayer();
-/*
-let cell = createCell(0, 0);
-if (freePosition(cell)) {
-  cellList.push(cell);
-  createCache(cell);
-}
-
-clearRectangles();
-
-cell = createCell(0, 0);
-if (freePosition(cell)) {
-  cellList.push(cell);
-  createCache(cell);
-  console.log("position free")
-}
-else{
-  createCache(cell, [{i: 0, j: 0, serial: 3}])
-}
-*/
