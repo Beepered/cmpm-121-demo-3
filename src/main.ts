@@ -12,7 +12,7 @@ import { Cell, Coin, GeoCache, GeoRect, LatLng } from "./interfaces.ts";
 const bus = new EventTarget();
 
 const app: HTMLDivElement = document.querySelector("#app")!;
-document.title = "GEO LOC";
+document.title = "GEO COINS";
 
 const MAIN_LOCATION = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
@@ -30,7 +30,7 @@ const map = leaflet.map(document.getElementById("map")!, {
   closePopupOnClick: false,
 });
 
-const playerLocation: LatLng = {
+let playerLocation: LatLng = {
   lat: MAIN_LOCATION.lat,
   lng: MAIN_LOCATION.lng,
 };
@@ -136,6 +136,7 @@ function displayTakeCoins(
     button.addEventListener("click", () => {
       collect(cache, cache[x]);
       updateCellDiv(cache, takeDiv, giveDiv);
+      saveGameState();
     });
     buttonDiv.append(
       `${cache[x].homeCell.i}:${cache[x].homeCell.j}#${cache[x].serial}`,
@@ -157,6 +158,7 @@ function displayGiveCoins(
     button.addEventListener("click", () => {
       deposit(cache, playerCoins[x]);
       updateCellDiv(cache, takeDiv, giveDiv);
+      saveGameState();
     });
     buttonDiv.append(
       `${playerCoins[x].homeCell.i}:${playerCoins[x].homeCell.j}#${
@@ -228,7 +230,7 @@ const cacheMomentos = new Map<Cell, string>();
 
 function createCellsAroundPlayer() {
   const playerCell = getCellForLatLng(playerLocation);
-  const NEIGHBORHOOD_SIZE = 5;
+  const NEIGHBORHOOD_SIZE = 4;
   const CACHE_SPAWN_PROBABILITY = 0.1;
   for (let dI = -NEIGHBORHOOD_SIZE; dI < NEIGHBORHOOD_SIZE; dI++) {
     for (let dJ = -NEIGHBORHOOD_SIZE; dJ < NEIGHBORHOOD_SIZE; dJ++) {
@@ -246,9 +248,35 @@ function createCellsAroundPlayer() {
 function saveCaches() {
   for (const [cell, cache] of knownCaches) {
     cacheMomentos.set(cell, getMomentoForCache(cache));
-    localStorage.setItem(`${cell.i}:${cell.j}`, getMomentoForCache(cache));
   }
   knownCaches.clear();
+}
+
+function saveGameState() {
+  /*
+  localStorage.setItem("caches", JSON.stringify(cacheMomentos));
+  localStorage.setItem("player coins", JSON.stringify(playerCoins));
+  localStorage.setItem("location", JSON.stringify(playerLocation));
+  */
+  const gameState = { cacheMomentos, playerCoins, playerLocation };
+  localStorage.setItem("gameState", JSON.stringify(gameState));
+}
+
+function loadGameState() {
+  const gameStateStr = localStorage.getItem("gameState");
+  if (gameStateStr) {
+    try {
+      const gameState = JSON.parse(gameStateStr);
+      //cacheMomentos = gameState.cacheMomentos;
+      playerCoins = gameState.playerCoins;
+      updateInventoryText();
+      playerLocation = gameState.playerLocation;
+      bus.dispatchEvent(new Event("player-moved"));
+    } catch {
+      console.log("no local storage");
+      createCellsAroundPlayer();
+    }
+  }
 }
 
 function clearRectangles() {
@@ -287,15 +315,11 @@ function createGeoLocationButton() {
   button.addEventListener("click", () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition((position) => {
-        console.log(
-          `got pos: ${position.coords.latitude}:${position.coords.longitude}`,
-        );
         playerLocation.lat = position.coords.latitude;
         playerLocation.lng = position.coords.longitude;
         bus.dispatchEvent(new Event("player-moved"));
       });
     } else {
-      console.log("no location services");
       button.style.background = "grey";
       button.disabled = true;
     }
@@ -310,6 +334,7 @@ bus.addEventListener("player-moved", () => {
   saveCaches();
   clearRectangles();
   createCellsAroundPlayer();
+  saveGameState();
 });
 
 function createResetButton() {
@@ -326,4 +351,5 @@ function createResetButton() {
   movementButtons.append(button);
 }
 
-createCellsAroundPlayer();
+loadGameState();
+//createCellsAroundPlayer();
