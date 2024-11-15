@@ -12,6 +12,7 @@ import { Cell, Coin, GeoCache, GeoRect, LatLng } from "./interfaces.ts";
 const bus = new EventTarget();
 
 const app: HTMLDivElement = document.querySelector("#app")!;
+document.title = "GEO LOC";
 
 const MAIN_LOCATION = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
@@ -245,6 +246,7 @@ function createCellsAroundPlayer() {
 function saveCaches() {
   for (const [cell, cache] of knownCaches) {
     cacheMomentos.set(cell, getMomentoForCache(cache));
+    localStorage.setItem(`${cell.i}:${cell.j}`, getMomentoForCache(cache));
   }
   knownCaches.clear();
 }
@@ -266,6 +268,7 @@ createMovementButton("⬆️", 1, 0);
 createMovementButton("⬇️", -1, 0);
 createMovementButton("⬅️", 0, -1);
 createMovementButton("➡️", 0, 1);
+createClearLocalStorageButton();
 
 function createMovementButton(text: string, xChange: number, yChange: number) {
   const button = document.createElement("button");
@@ -308,5 +311,14 @@ bus.addEventListener("player-moved", () => {
   clearRectangles();
   createCellsAroundPlayer();
 });
+
+function createClearLocalStorageButton() {
+  const button = document.createElement("button");
+  button.innerHTML = "🚮";
+  button.addEventListener("click", () => {
+    localStorage.clear();
+  });
+  movementButtons.append(button);
+}
 
 createCellsAroundPlayer();
