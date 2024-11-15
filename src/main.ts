@@ -282,7 +282,20 @@ function createGeoLocationButton() {
   const button = document.createElement("button");
   button.innerHTML = "🌐";
   button.addEventListener("click", () => {
-    console.log("e");
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        console.log(
+          `got pos: ${position.coords.latitude}:${position.coords.longitude}`,
+        );
+        playerLocation.lat = position.coords.latitude;
+        playerLocation.lng = position.coords.longitude;
+        bus.dispatchEvent(new Event("player-moved"));
+      });
+    } else {
+      console.log("no location services");
+      button.style.background = "grey";
+      button.disabled = true;
+    }
   });
   movementButtons.append(button);
 }
