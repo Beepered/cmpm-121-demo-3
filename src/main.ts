@@ -46,7 +46,7 @@ leaflet
   })
   .addTo(map);
 
-const playerCoins: Coin[] = [];
+let playerCoins: Coin[] = [];
 
 const coinText = document.createElement("h1");
 coinText.innerHTML = `inventory:`;
@@ -268,7 +268,7 @@ createMovementButton("⬆️", 1, 0);
 createMovementButton("⬇️", -1, 0);
 createMovementButton("⬅️", 0, -1);
 createMovementButton("➡️", 0, 1);
-createClearLocalStorageButton();
+createResetButton();
 
 function createMovementButton(text: string, xChange: number, yChange: number) {
   const button = document.createElement("button");
@@ -312,11 +312,16 @@ bus.addEventListener("player-moved", () => {
   createCellsAroundPlayer();
 });
 
-function createClearLocalStorageButton() {
+function createResetButton() {
   const button = document.createElement("button");
   button.innerHTML = "🚮";
   button.addEventListener("click", () => {
+    playerCoins = [];
+    updateInventoryText();
+    cacheMomentos.clear();
     localStorage.clear();
+    clearRectangles();
+    createCellsAroundPlayer();
   });
   movementButtons.append(button);
 }
