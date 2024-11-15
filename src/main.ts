@@ -260,6 +260,8 @@ function clearRectangles() {
 const movementButtons = document.createElement("div");
 movementButtons.style.textAlign = "center";
 app.append(movementButtons);
+
+createGeoLocationButton();
 createMovementButton("⬆️", 1, 0);
 createMovementButton("⬇️", -1, 0);
 createMovementButton("⬅️", 0, -1);
@@ -272,6 +274,15 @@ function createMovementButton(text: string, xChange: number, yChange: number) {
     playerLocation.lat += xChange * DEGREES_PER_TILE;
     playerLocation.lng += yChange * DEGREES_PER_TILE;
     bus.dispatchEvent(new Event("player-moved"));
+  });
+  movementButtons.append(button);
+}
+
+function createGeoLocationButton() {
+  const button = document.createElement("button");
+  button.innerHTML = "🌐";
+  button.addEventListener("click", () => {
+    console.log("e");
   });
   movementButtons.append(button);
 }
