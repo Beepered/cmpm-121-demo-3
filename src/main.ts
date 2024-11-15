@@ -249,15 +249,10 @@ function saveCaches() {
   for (const [cell, cache] of knownCaches) {
     cacheMomentos.set(cell, getMomentoForCache(cache));
   }
-  knownCaches.clear();
 }
 
 function saveGameState() {
-  /*
-  localStorage.setItem("caches", JSON.stringify(cacheMomentos));
-  localStorage.setItem("player coins", JSON.stringify(playerCoins));
-  localStorage.setItem("location", JSON.stringify(playerLocation));
-  */
+  saveCaches();
   const gameState = { cacheMomentos, playerCoins, playerLocation };
   localStorage.setItem("gameState", JSON.stringify(gameState));
 }
@@ -273,9 +268,11 @@ function loadGameState() {
       playerLocation = gameState.playerLocation;
       bus.dispatchEvent(new Event("player-moved"));
     } catch {
-      console.log("no local storage");
-      createCellsAroundPlayer();
+      console.log("error");
     }
+  } else {
+    console.log("no local storage");
+    createCellsAroundPlayer();
   }
 }
 
@@ -331,7 +328,8 @@ bus.addEventListener("player-moved", () => {
   playerMarker.setLatLng(playerLocation);
   map.panTo(playerLocation);
 
-  saveCaches();
+  //saveCaches();
+  knownCaches.clear();
   clearRectangles();
   createCellsAroundPlayer();
   saveGameState();
@@ -352,4 +350,3 @@ function createResetButton() {
 }
 
 loadGameState();
-//createCellsAroundPlayer();
