@@ -328,11 +328,18 @@ function createGeoLocationButton() {
   movementButtons.append(button);
 }
 
+const linePositions: LatLng[] = [];
+
+function lineBehavior() {
+  linePositions.push({ lat: playerLocation.lat, lng: playerLocation.lng });
+  leaflet.polyline(linePositions, { color: "grey" }).addTo(map);
+}
+
 bus.addEventListener("player-moved", () => {
   playerMarker.setLatLng(playerLocation);
   map.panTo(playerLocation);
 
-  //saveCaches();
+  lineBehavior();
   saveGameState();
   knownCaches.clear();
   clearRectangles();
@@ -343,11 +350,15 @@ function createResetButton() {
   const button = document.createElement("button");
   button.innerHTML = "🚮";
   button.addEventListener("click", () => {
+    alert("RESET");
     playerCoins = [];
     updateInventoryText();
     cacheMomentos.clear();
     localStorage.clear();
     clearRectangles();
+    playerLocation = { lat: MAIN_LOCATION.lat, lng: MAIN_LOCATION.lng };
+    playerMarker.setLatLng(playerLocation);
+    map.panTo(playerLocation);
     createCellsAroundPlayer();
   });
   movementButtons.append(button);
