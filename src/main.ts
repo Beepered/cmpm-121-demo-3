@@ -255,6 +255,8 @@ function saveGameState() {
   saveCaches();
   const gameState = { cacheMomentos, playerCoins, playerLocation };
   localStorage.setItem("gameState", JSON.stringify(gameState));
+
+  console.log(`saveGameState cache: ${cacheMomentos.size}`);
 }
 
 function loadGameState() {
@@ -262,13 +264,14 @@ function loadGameState() {
   if (gameStateStr) {
     try {
       const gameState = JSON.parse(gameStateStr);
-      //cacheMomentos = gameState.cacheMomentos;
+      Object.assign(cacheMomentos, gameState.cacheMomentos);
+      console.log(`load: ${cacheMomentos.size}`);
       playerCoins = gameState.playerCoins;
       updateInventoryText();
       playerLocation = gameState.playerLocation;
       bus.dispatchEvent(new Event("player-moved"));
     } catch {
-      console.log("error");
+      alert("error loading game state");
     }
   } else {
     console.log("no local storage");
@@ -311,12 +314,13 @@ function createGeoLocationButton() {
   button.innerHTML = "🌐";
   button.addEventListener("click", () => {
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition((position) => {
+      navigator.geolocation.watchPosition((position) => {
         playerLocation.lat = position.coords.latitude;
         playerLocation.lng = position.coords.longitude;
         bus.dispatchEvent(new Event("player-moved"));
       });
     } else {
+      alert("can't get location");
       button.style.background = "grey";
       button.disabled = true;
     }
@@ -329,10 +333,10 @@ bus.addEventListener("player-moved", () => {
   map.panTo(playerLocation);
 
   //saveCaches();
+  saveGameState();
   knownCaches.clear();
   clearRectangles();
   createCellsAroundPlayer();
-  saveGameState();
 });
 
 function createResetButton() {
