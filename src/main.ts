@@ -61,12 +61,12 @@ const DEGREES_PER_TILE = 1e-4;
 function getRectForCell(i: number, j: number): GeoRect {
   return {
     topLeft: {
-      lat: (i - 0.5) * DEGREES_PER_TILE,
-      lng: (j - 0.5) * DEGREES_PER_TILE,
+      lat: i * DEGREES_PER_TILE,
+      lng: j * DEGREES_PER_TILE,
     },
     bottomRight: {
-      lat: (i + 0.5) * DEGREES_PER_TILE,
-      lng: (j + 0.5) * DEGREES_PER_TILE,
+      lat: (i + 1) * DEGREES_PER_TILE,
+      lng: (j + 1) * DEGREES_PER_TILE,
     },
   };
 }
@@ -196,13 +196,6 @@ function updateCellDiv(
   }
 }
 
-function getCellForLatLng(latLng: LatLng): Cell {
-  return getCanonicalCell(
-    Math.floor(latLng.lat / DEGREES_PER_TILE),
-    Math.floor(latLng.lng / DEGREES_PER_TILE),
-  );
-}
-
 const cellMap = new Map<string, Cell>();
 function getCanonicalCell(i: number, j: number): Cell {
   const key = `${i},${j}`;
@@ -210,6 +203,13 @@ function getCanonicalCell(i: number, j: number): Cell {
     cellMap.set(key, { i, j });
   }
   return cellMap.get(key)!;
+}
+
+function getCellForLatLng(latLng: LatLng): Cell {
+  return getCanonicalCell(
+    Math.floor(latLng.lat / DEGREES_PER_TILE),
+    Math.floor(latLng.lng / DEGREES_PER_TILE),
+  );
 }
 
 function getMomentoForCache(cache: GeoCache): string {
@@ -232,8 +232,8 @@ function createCellsAroundPlayer() {
   const playerCell = getCellForLatLng(playerLocation);
   const NEIGHBORHOOD_SIZE = 4;
   const CACHE_SPAWN_PROBABILITY = 0.1;
-  for (let dI = -NEIGHBORHOOD_SIZE; dI < NEIGHBORHOOD_SIZE; dI++) {
-    for (let dJ = -NEIGHBORHOOD_SIZE; dJ < NEIGHBORHOOD_SIZE; dJ++) {
+  for (let dI = -NEIGHBORHOOD_SIZE; dI <= NEIGHBORHOOD_SIZE; dI++) {
+    for (let dJ = -NEIGHBORHOOD_SIZE; dJ <= NEIGHBORHOOD_SIZE; dJ++) {
       // If location i,j is lucky enough, spawn a cache!
       const i = playerCell.i + dI;
       const j = playerCell.j + dJ;
@@ -245,6 +245,21 @@ function createCellsAroundPlayer() {
   }
 }
 
+function clearRectangles() {
+  map.eachLayer(function (layer: leaflet.Layer) {
+    if (layer instanceof leaflet.Rectangle) {
+      map.removeLayer(layer);
+    }
+  });
+}
+
+let polyLinesList: leaflet.Polyline[] = [];
+function clearPolyLines() {
+  polyLinesList.forEach((line) => {
+    map.removeLayer(line);
+  });
+}
+
 function saveCaches() {
   for (const [cell, cache] of knownCaches) {
     cacheMomentos.set(cell, getMomentoForCache(cache));
@@ -253,38 +268,39 @@ function saveCaches() {
 
 function saveGameState() {
   saveCaches();
-  const gameState = { cacheMomentos, playerCoins, playerLocation };
-  localStorage.setItem("gameState", JSON.stringify(gameState));
-
-  console.log(`saveGameState cache: ${cacheMomentos.size}`);
+  localStorage.setItem(
+    "cacheMomentos",
+    JSON.stringify(Array.from(cacheMomentos.entries())),
+  );
+  localStorage.setItem("playerCoins", JSON.stringify(playerCoins));
+  localStorage.setItem("playerLocation", JSON.stringify(playerLocation));
+  localStorage.setItem("linePositions", JSON.stringify(linePositions));
 }
 
 function loadGameState() {
-  const gameStateStr = localStorage.getItem("gameState");
-  if (gameStateStr) {
-    try {
-      const gameState = JSON.parse(gameStateStr);
-      Object.assign(cacheMomentos, gameState.cacheMomentos);
-      console.log(`load: ${cacheMomentos.size}`);
-      playerCoins = gameState.playerCoins;
-      updateInventoryText();
-      playerLocation = gameState.playerLocation;
-      bus.dispatchEvent(new Event("player-moved"));
-    } catch {
-      alert("error loading game state");
-    }
-  } else {
-    console.log("no local storage");
-    createCellsAroundPlayer();
+  const recoveredCacheMomentos = localStorage.getItem("cacheMomentos");
+  if (recoveredCacheMomentos) {
+    cacheMomentos.clear();
+    const cacheMomentoStringRecovered: Array<[Cell, string]> = JSON.parse(
+      recoveredCacheMomentos,
+    );
+    cacheMomentoStringRecovered.forEach((pair) => {
+      const [{ i, j }, momento] = pair;
+      const cell = getCanonicalCell(i, j);
+      cacheMomentos.set(cell, momento);
+    });
   }
-}
-
-function clearRectangles() {
-  map.eachLayer(function (layer: leaflet.Layer) {
-    if (layer instanceof leaflet.Rectangle) {
-      map.removeLayer(layer);
-    }
-  });
+  playerCoins = JSON.parse(
+    localStorage.getItem("playerCoins")! || JSON.stringify(playerCoins),
+  );
+  playerLocation = JSON.parse(
+    localStorage.getItem("playerLocation")! || JSON.stringify(playerLocation),
+  );
+  polyLinesList = JSON.parse(
+    localStorage.getItem("linePositions")! || JSON.stringify(linePositions),
+  );
+  updateInventoryText();
+  bus.dispatchEvent(new Event("player-moved"));
 }
 
 const movementButtons = document.createElement("div");
@@ -320,7 +336,7 @@ function createGeoLocationButton() {
         bus.dispatchEvent(new Event("player-moved"));
       });
     } else {
-      alert("can't get location");
+      alert("Can't get location");
       button.style.background = "grey";
       button.disabled = true;
     }
@@ -328,11 +344,12 @@ function createGeoLocationButton() {
   movementButtons.append(button);
 }
 
-const linePositions: LatLng[] = [];
+let linePositions: LatLng[] = [];
 
 function lineBehavior() {
   linePositions.push({ lat: playerLocation.lat, lng: playerLocation.lng });
-  leaflet.polyline(linePositions, { color: "grey" }).addTo(map);
+  const newLine = leaflet.polyline(linePositions, { color: "grey" }).addTo(map);
+  polyLinesList.push(newLine);
 }
 
 bus.addEventListener("player-moved", () => {
@@ -350,18 +367,25 @@ function createResetButton() {
   const button = document.createElement("button");
   button.innerHTML = "🚮";
   button.addEventListener("click", () => {
-    alert("RESET");
-    playerCoins = [];
-    updateInventoryText();
-    cacheMomentos.clear();
-    localStorage.clear();
-    clearRectangles();
-    playerLocation = { lat: MAIN_LOCATION.lat, lng: MAIN_LOCATION.lng };
-    playerMarker.setLatLng(playerLocation);
-    map.panTo(playerLocation);
-    createCellsAroundPlayer();
+    const reset = prompt("Are you sure you want to delete your history? Y/N");
+    if (reset?.toLowerCase() == "y") {
+      localStorage.clear();
+      playerCoins = [];
+      updateInventoryText();
+      cacheMomentos.clear();
+      clearRectangles();
+      clearPolyLines();
+      linePositions = [];
+      polyLinesList = [];
+      playerLocation = { lat: MAIN_LOCATION.lat, lng: MAIN_LOCATION.lng };
+      playerMarker.setLatLng(playerLocation);
+      map.panTo(playerLocation);
+      lineBehavior();
+      createCellsAroundPlayer();
+    }
   });
   movementButtons.append(button);
 }
 
 loadGameState();
+lineBehavior();
