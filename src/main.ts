@@ -106,35 +106,27 @@ function createCache(cell: Cell): GeoCache {
   return inventory;
 }
 
-function collect(cache: GeoCache, coin: Coin) { // takes coin and gives to player
-  if (cache.length > 0) {
-    playerCoins.push(coin);
-    const index = cache.indexOf(coin);
-    cache.splice(index, 1);
-    updateInventoryText();
-  }
-}
-function deposit(cache: GeoCache, coin: Coin) { // takes coin and gives to cell
-  if (playerCoins.length > 0) {
-    cache.push(coin);
-    const index = playerCoins.indexOf(coin);
-    playerCoins.splice(index, 1);
+function transferCoin(giver: GeoCache, receiver: GeoCache, coin: Coin) {
+  if (giver.length > 0) {
+    receiver.push(coin);
+    const index = giver.indexOf(coin);
+    giver.splice(index, 1);
     updateInventoryText();
   }
 }
 
-function displayTakeCoins(
+function displayCoins(
   cache: GeoCache,
   takeDiv: HTMLDivElement,
   giveDiv: HTMLDivElement,
 ) {
-  for (let x = 0; x < cache.length; x++) {
+  for (let x = 0; x < cache.length; x++) { // coin
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
     button.innerHTML = `take`;
     buttonDiv.append(button);
     button.addEventListener("click", () => {
-      collect(cache, cache[x]);
+      transferCoin(cache, playerCoins, cache[x]);
       updateCellDiv(cache, takeDiv, giveDiv);
       saveGameState();
     });
@@ -143,20 +135,13 @@ function displayTakeCoins(
     );
     takeDiv.append(buttonDiv);
   }
-}
-
-function displayGiveCoins(
-  cache: GeoCache,
-  takeDiv: HTMLDivElement,
-  giveDiv: HTMLDivElement,
-) {
-  for (let x = 0; x < playerCoins.length; x++) {
+  for (let x = 0; x < playerCoins.length; x++) { // player
     const buttonDiv = document.createElement("div");
     const button = document.createElement("button");
     button.innerHTML = `give`;
     buttonDiv.append(button);
     button.addEventListener("click", () => {
-      deposit(cache, playerCoins[x]);
+      transferCoin(playerCoins, cache, playerCoins[x]);
       updateCellDiv(cache, takeDiv, giveDiv);
       saveGameState();
     });
@@ -183,17 +168,9 @@ function updateCellDiv(
   takeDiv: HTMLDivElement,
   giveDiv: HTMLDivElement,
 ) {
-  takeDiv.innerHTML = ``;
-  if (cache.length > 0) {
-    takeDiv.innerHTML += `<div>TAKE</div>`;
-    displayTakeCoins(cache, takeDiv, giveDiv);
-  }
-
-  giveDiv.innerHTML = ``;
-  if (playerCoins.length > 0) {
-    giveDiv.innerHTML += `<div>GIVE</div>`;
-    displayGiveCoins(cache, takeDiv, giveDiv);
-  }
+  takeDiv.innerHTML = `TAKE`;
+  giveDiv.innerHTML = `GIVE`;
+  displayCoins(cache, takeDiv, giveDiv);
 }
 
 const cellMap = new Map<string, Cell>();
